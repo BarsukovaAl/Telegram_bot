@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main(do_set_timer=None):
     updater = Updater(token=TOKEN)
     dispatcher: Dispatcher = updater.dispatcher
 
@@ -99,14 +99,17 @@ def do_inline_keyboard(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     logger.info(f'{user_id=} вызвал функцию do_inline_keyboard')
     buttons = [
-        ['Раз', 'Два'],
-        ['Три', 'Четыре'],
+        [('погода сегодня', 'https://yandex.ru/pogoda/moscow?utm_source=serp&utm_campaign=helper&utm_medium=desktop'
+                            '&utm_content=helper_desktop_main&utm_term=title&lat=55.755863&lon=37.6177'),
+         ('расписание электричек из мск',
+          'https://rasp.yandex.ru/suburban/moskvoreche-platform--chekhov-train-station/today')],
+         [('расписание электричек в мск',
+           'https://rasp.yandex.ru/suburban/chekhov-train-station--moskvoreche-platform/today'),
+          ('кухня', 'https://ctc.ru/projects/serials/kukhnya/?ysclid=lo8jf2yca1753403068')],
     ]
-    keyboard_buttons = [[InlineKeyboardButton(text=text, callback_data=text) for text in row] for row in buttons]
-    keyboard_buttons.append([InlineKeyboardButton(text='Ха-Ха',
-                                                  url='https://yandex.ru/pogoda/moscow?utm_source=serp&utm_campaign'
-                                                      '=helper&utm_medium=desktop&utm_content=helper_desktop_main'
-                                                      '&utm_term=title&lat=55.755863&lon=37.6177')])
+    keyboard_buttons = [[InlineKeyboardButton(text=text[0], callback_data=text[0], url=text[1]) for text in row] for row
+                        in buttons]
+
     logger.info(f'Созданы кнопки {buttons}')
     keyboard = InlineKeyboardMarkup(keyboard_buttons)
     logger.info(f'Создана клавиатура {keyboard}')
@@ -139,11 +142,11 @@ def keyboard_react(update: Update, context: CallbackContext):
     )
 
 
-def do_set_timer(update: Update, context: CallbackContext):
+def set_timer(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
-    context.user_data['user_id'] = user_id
-    context.user_data['timer'] = 0
-    context.job_queue.run_repeating(show_seconds, interval=10)
+    context.bot_data['user_id'] = user_id
+    context.bot_data['timer'] = datetime.datetime.now()
+    context.bot_data['timer_job'] = context.job_queue.run_repeating(show_seconds, 1)
 
 
 def show_seconds(context: CallbackContext):
@@ -160,6 +163,12 @@ def show_seconds(context: CallbackContext):
     else:
         context.bot.edit_message_text(text, chat_id=user_id, message_id=message_id)
 
+
+def stop_timer(update: Update, context: CallbackContext):
+    logger.info(f'Запущена функция delete_timer')
+    timer = datetime.datetime.now() - context.bot_data['timer']
+    context.bot_data['timer_job'].schedule_removal()
+    update.message.reply_text(f'Таймер остановлен. Прошло {timer} секунд')
 
 def delete_timer(update: Update, context: CallbackContext):
     logger.info(f'Запущена функция delete_timer')
