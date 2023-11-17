@@ -10,15 +10,16 @@ import logging
 import datetime
 
 from key import TOKEN
+from fsm import register_handler
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s | %(levelname)s | %(name)s: %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
 
-def main(do_set_timer=None):
+def main():
     updater = Updater(token=TOKEN)
     dispatcher: Dispatcher = updater.dispatcher
 
@@ -26,7 +27,8 @@ def main(do_set_timer=None):
     echo_handler = MessageHandler(Filters.text, do_echo)
     keyboard_handler = CommandHandler('keyboard', do_keyboard)
     inline_keyboard_handler = CommandHandler('inline_keyboard', do_inline_keyboard)
-    set_timer_handler = CommandHandler('set_timer', do_set_timer)
+    set_timer_handler = MessageHandler(Filters.text('СТАРТ'), set_timer)
+    delete_timer_handler = MessageHandler(Filters.text('СТОП'), delete_timer)
     callback_handler = CallbackQueryHandler(keyboard_react)
 
     dispatcher.add_handler(start_handler)
@@ -34,8 +36,9 @@ def main(do_set_timer=None):
     dispatcher.add_handler(inline_keyboard_handler)
     dispatcher.add_handler(set_timer_handler)
     dispatcher.add_handler(callback_handler)
+    dispatcher.add_handler(delete_timer_handler)
+    dispatcher.add_handler(register_handler)
     dispatcher.add_handler(echo_handler)
-
     updater.start_polling()
     logger.info(updater.bot.getMe())
     updater.idle()
@@ -63,15 +66,9 @@ def do_start(update: Update, context: CallbackContext):
         '/start',
         '/keyboard',
         '/inline_keyboard',
+        '/register',
         '/set',
-        'html',
-        '<i>Курсив</i>',
-        '<code>код</code>',
-        '<s>перечеркнутый</s>',
-        '<u>подчеркнутый</u>',
-        '<a href="https://technodzen.com/nauka/'
-        'sozdan-magnitnyy-gel-zazhivlyayuschiy-rany-u-diabetikov-v-tri-raza-bystree?'
-        'utm_source=yxnews&utm_medium=desktop">Сайт</a>'
+
     ]
     text = '\n'.join(text)
 
@@ -80,9 +77,7 @@ def do_start(update: Update, context: CallbackContext):
 
 def do_keyboard(update: Update, context: CallbackContext):
     buttons = [
-        ['Раз', 'Два'],
-        ['Три', 'Четыре'],
-        ['Ха-Ха']
+        ['СТАРТ', 'СТОП']
     ]
     logger.info(f'Созданы кнопочки!{buttons}')
     keyboard = ReplyKeyboardMarkup(buttons)
@@ -172,11 +167,12 @@ def stop_timer(update: Update, context: CallbackContext):
 
 def delete_timer(update: Update, context: CallbackContext):
     logger.info(f'Запущена функция delete_timer')
-    timer = context.bot_data['timer']
+    timer = datetime.datetime.now() - context.bot_data['timer']
     var = context.bot_data['timer_job']
     for job in context.job_queue.jobs():
         job.schedule_removal()
-        update.message.reply_text(f'Таймер остановлен, прошло {timer} секунд')
+        update.message.reply_text(f'Таймер остановлен, прошло {timer.seconds} секунд')
+
 
 
 if __name__ == '__main__':
