@@ -7,6 +7,7 @@ from telegram.ext import CallbackContext
 from telegram.ext import Filters
 
 import logging
+from db import write_to_db
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ def get_name(update: Update, context: CallbackContext):
     username = update.message.from_user.username
     text = update.message.text
     logger.info(f'{username=} {user_id=} вызвал функцию get_name')
+    write_to_db()
     answer = [
         f'Твое имя - {text}'
     ]
